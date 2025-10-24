@@ -1,1 +1,1 @@
-# chat-emotion-app
+# PROJE PLANI
