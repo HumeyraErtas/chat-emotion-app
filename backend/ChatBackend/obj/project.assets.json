@@ -5061,11 +5061,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\humeyra\\OneDrive\\Belgeler\\GitHub\\chat-emotion-app\\backend\\ChatBackend.csproj",
+      "projectUniqueName": "C:\\Users\\humeyra\\OneDrive\\Belgeler\\GitHub\\chat-emotion-app\\backend\\ChatBackend\\ChatBackend.csproj",
       "projectName": "ChatBackend",
-      "projectPath": "C:\\Users\\humeyra\\OneDrive\\Belgeler\\GitHub\\chat-emotion-app\\backend\\ChatBackend.csproj",
+      "projectPath": "C:\\Users\\humeyra\\OneDrive\\Belgeler\\GitHub\\chat-emotion-app\\backend\\ChatBackend\\ChatBackend.csproj",
       "packagesPath": "C:\\Users\\humeyra\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\humeyra\\OneDrive\\Belgeler\\GitHub\\chat-emotion-app\\backend\\obj\\",
+      "outputPath": "C:\\Users\\humeyra\\OneDrive\\Belgeler\\GitHub\\chat-emotion-app\\backend\\ChatBackend\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\humeyra\\AppData\\Roaming\\NuGet\\NuGet.Config"
