@@ -1,30 +1,27 @@
 import gradio as gr
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
-# Hugging Face modelini yükle
-analyzer = pipeline("sentiment-analysis")
+model_name = "savasy/bert-base-turkish-sentiment-cased"
 
-# API fonksiyonu
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
+
 def analyze_text(text):
     result = analyzer(text)[0]
-
-    # Hugging Face Spaces 'data' formatı gereği liste içinde göndermeliyiz
+    label = result["label"].upper()
+    
+    # HF sonucu "positive" / "negative" / "neutral" şeklinde
     return {
-        "data": [
-            {
-                "label": result["label"],
-                "score": float(result["score"])
-            }
-        ]
+        "label": label,
+        "score": round(result["score"], 3)
     }
 
-# API formatında çalışan Gradio interface
 iface = gr.Interface(
     fn=analyze_text,
-    inputs=gr.Textbox(label="Write Message"),
-    outputs=gr.JSON(label="Sentiment Result"),
-    title="Emotion Analyzer API",
-    description="Returns sentiment for chat messages"
+    inputs="text",
+    outputs="json"
 )
 
 if __name__ == "__main__":
