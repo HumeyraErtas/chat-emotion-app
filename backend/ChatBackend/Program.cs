@@ -1,36 +1,18 @@
-﻿// See https://aka.ms/new-console-template for more information
-using ChatBackend.Data;
+﻿using ChatBackend.Data;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Database Ayarı ---
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// --- Controller ve HttpClient ---
 builder.Services.AddControllers();
-builder.Services.AddHttpClient();
-
-// --- CORS Ayarı ---
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod());
-});
+builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+    p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()));
 
 var app = builder.Build();
 
-// --- Middleware Sırası ---
 app.UseCors();
 app.MapControllers();
-
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-}
 
 app.Run();
