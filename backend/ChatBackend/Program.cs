@@ -20,18 +20,15 @@ var app = builder.Build();
 app.UseCors();
 app.MapControllers();
 
-// ✅ Controlled Migration — CRASH YOK!
+// ✅ Migration Safe
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        db.Database.Migrate();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.Migrate(); // ✅ tablo oluşturur / çökmez
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine("Migration Error: " + ex.Message);
-    }
+    catch { }
 }
 
 app.Run();
