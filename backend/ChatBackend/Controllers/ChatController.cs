@@ -14,7 +14,6 @@ namespace ChatBackend.Controllers
     {
         private readonly AppDbContext _context;
         private readonly HttpClient _httpClient;
-
         private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/run/predict";
 
         public ChatController(AppDbContext context)
@@ -28,25 +27,33 @@ namespace ChatBackend.Controllers
         {
             try
             {
-                var payload = new
-                {
-                    data = new object[] { message.Text }
-                };
-
+                var payload = new { data = new[] { message.Text } };
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await _httpClient.PostAsync(AI_URL, content);
                 var responseText = await response.Content.ReadAsStringAsync();
 
-                Console.WriteLine("AI Response: " + responseText);
+                Console.WriteLine("🔍 AI Response: " + responseText);
 
-                // JSON Parse
-                using var doc = JsonDocument.Parse(responseText);
-                var dataArray = doc.RootElement.GetProperty("data")[0].EnumerateArray().ToArray();
+                using JsonDocument doc = JsonDocument.Parse(responseText);
+                var root = doc.RootElement;
 
-                string label = dataArray[0].GetString() ?? "Neutral";
-                float score = dataArray[1].GetSingle();
+                string label = "Unknown";
+                float score = 0;
+
+                if (root.TryGetProperty("data", out JsonElement dataArray)
+                    && dataArray.ValueKind == JsonValueKind.Array
+                    && dataArray.GetArrayLength() > 0)
+                {
+                    var result = dataArray[0];
+
+                    if (result.TryGetProperty("label", out JsonElement labelElement))
+                        label = labelElement.GetString() ?? "Unknown";
+
+                    if (result.TryGetProperty("score", out JsonElement scoreElement))
+                        score = scoreElement.GetSingle();
+                }
 
                 message.Emotion = label;
                 message.CreatedAt = DateTime.UtcNow;
@@ -54,35 +61,24 @@ namespace ChatBackend.Controllers
                 _context.Messages.Add(message);
                 await _context.SaveChangesAsync();
 
-                return Ok(new
-                {
-                    success = true,
-                    message.Id,
-                    message.Text,
-                    Emotion = label,
-                    Score = score
-                });
+                return Ok(new { success = true, message, score });
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ AI Error: " + ex.Message);
+                Console.WriteLine("❌ AI ERROR: " + ex.Message);
                 return Ok(new
                 {
                     success = false,
                     emotion = "Unknown",
-                    detail = "AI service error: " + ex.Message
+                    detail = ex.Message
                 });
             }
-
         }
 
         [HttpGet("messages")]
         public IActionResult GetMessages()
         {
-            var messages = _context.Messages
-                .OrderByDescending(m => m.Id)
-                .ToList();
-            
+            var messages = _context.Messages.OrderByDescending(m => m.Id).ToList();
             return Ok(messages);
         }
     }
