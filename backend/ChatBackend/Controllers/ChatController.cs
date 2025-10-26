@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ChatBackend.Data;
 using ChatBackend.Models;
 using System.Net.Http;
