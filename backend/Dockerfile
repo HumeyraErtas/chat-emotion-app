@@ -1,22 +1,22 @@
-# Stage 1: Build the application
+# Build Stage
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
 
-# Copy backend files
-COPY backend/ChatBackend ./backend/ChatBackend
+COPY ./src/ChatBackend ./ChatBackend
+WORKDIR /src/ChatBackend
 
-# Restore dependencies and publish
-WORKDIR /src/backend/ChatBackend
 RUN dotnet restore ChatBackend.csproj
 RUN dotnet publish ChatBackend.csproj -c Release -o /app/publish
 
-# Stage 2: Serve application
+# Runtime Stage
 FROM mcr.microsoft.com/dotnet/aspnet:7.0
+
 WORKDIR /app
+RUN mkdir -p /app/data
 
 COPY --from=build /app/publish .
 
-EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "ChatBackend.dll"]
