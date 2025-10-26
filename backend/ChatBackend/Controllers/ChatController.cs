@@ -15,13 +15,16 @@ namespace ChatBackend.Controllers
         private readonly AppDbContext _context;
         private readonly HttpClient _httpClient;
 
-        // Hugging Face Space API endpoint
+        // Hugging Face Space API URL
         private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/run/predict";
 
         public ChatController(AppDbContext context)
         {
             _context = context;
-            _httpClient = new HttpClient();
+            _httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(30) // ✅ Render timeout fix
+            };
         }
 
         [HttpPost("register")]
@@ -37,7 +40,7 @@ namespace ChatBackend.Controllers
         {
             try
             {
-                // AI servisine gönderilecek payload
+                // ✅ HuggingFace API'ye gönderilecek veri
                 var payload = new { data = new[] { message.Text } };
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -45,26 +48,36 @@ namespace ChatBackend.Controllers
                 var response = await _httpClient.PostAsync(AI_URL, content);
                 var responseText = await response.Content.ReadAsStringAsync();
 
-                Console.WriteLine("AI Response: " + responseText);
-
-                // JSON parse
-                using var doc = JsonDocument.Parse(responseText);
-                var root = doc.RootElement;
+                Console.WriteLine("✅ AI Response: " + responseText);
 
                 string label = "NEUTRAL";
-                if (root.TryGetProperty("data", out JsonElement dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+
+                // ✅ Güvenli JSON parse
+                try
                 {
-                    var first = dataArray[0];
-                    if (first.TryGetProperty("label", out JsonElement labelElement))
+                    using var doc = JsonDocument.Parse(responseText);
+                    var root = doc.RootElement;
+
+                    if (root.TryGetProperty("data", out JsonElement dataArray)
+                        && dataArray.ValueKind == JsonValueKind.Array
+                        && dataArray.GetArrayLength() > 0)
                     {
-                        label = labelElement.GetString() ?? "NEUTRAL";
+                        var first = dataArray[0];
+                        if (first.TryGetProperty("label", out JsonElement labelElement))
+                        {
+                            label = labelElement.GetString() ?? "NEUTRAL";
+                        }
                     }
                 }
+                catch 
+                {
+                    label = "NEUTRAL"; // fallback
+                }
 
-                // Veritabanına kaydet
+                // ✅ Veritabanına kaydet
                 message.Emotion = label;
                 _context.Messages.Add(message);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
@@ -76,7 +89,7 @@ namespace ChatBackend.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ Hata: " + ex.Message);
+                Console.WriteLine("❌ API Hata: " + ex.Message);
                 return StatusCode(500, new { error = ex.Message });
             }
         }
