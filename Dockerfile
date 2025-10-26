@@ -2,15 +2,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
 
-# Copy everything
-COPY backend/. ./backend/
+# Copy backend files
+COPY backend/ChatBackend ./backend/ChatBackend
 
-# Restore dependencies & publish
-WORKDIR /src/backend
-RUN dotnet restore
-RUN dotnet publish -c Release -o /app/publish
+# Restore dependencies and publish
+WORKDIR /src/backend/ChatBackend
+RUN dotnet restore ChatBackend.csproj
+RUN dotnet publish ChatBackend.csproj -c Release -o /app/publish
 
-# Stage 2: Run application
+# Stage 2: Serve application
 FROM mcr.microsoft.com/dotnet/aspnet:7.0
 WORKDIR /app
 
