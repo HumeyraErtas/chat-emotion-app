@@ -28,21 +28,25 @@ namespace ChatBackend.Controllers
         {
             try
             {
-                var payload = new { data = new[] { message.Text } };
+                var payload = new
+                {
+                    data = new object[] { message.Text }
+                };
+
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await _httpClient.PostAsync(AI_URL, content);
                 var responseText = await response.Content.ReadAsStringAsync();
 
-                Console.WriteLine("AI Response Raw: " + responseText);
+                Console.WriteLine("AI Response: " + responseText);
 
+                // JSON Parse
                 using var doc = JsonDocument.Parse(responseText);
-                var root = doc.RootElement;
-                var dataArray = root.GetProperty("data");
+                var dataArray = doc.RootElement.GetProperty("data")[0].EnumerateArray().ToArray();
 
-                string label = dataArray[0].GetProperty("label").GetString() ?? "Unknown";
-                double score = dataArray[0].GetProperty("score").GetDouble();
+                string label = dataArray[0].GetString() ?? "Neutral";
+                float score = dataArray[1].GetSingle();
 
                 message.Emotion = label;
                 message.CreatedAt = DateTime.UtcNow;
@@ -53,22 +57,23 @@ namespace ChatBackend.Controllers
                 return Ok(new
                 {
                     success = true,
-                    id = message.Id,
-                    text = message.Text,
-                    emotion = label,
-                    score = score
+                    message.Id,
+                    message.Text,
+                    Emotion = label,
+                    Score = score
                 });
             }
             catch (Exception ex)
             {
                 Console.WriteLine("❌ AI Error: " + ex.Message);
-                return Ok(new 
+                return Ok(new
                 {
                     success = false,
                     emotion = "Unknown",
-                    detail = "AI service not available"
+                    detail = "AI service error: " + ex.Message
                 });
             }
+
         }
 
         [HttpGet("messages")]
