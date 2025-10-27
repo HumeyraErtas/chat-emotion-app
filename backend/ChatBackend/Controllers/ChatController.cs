@@ -14,7 +14,9 @@ namespace ChatBackend.Controllers
     {
         private readonly AppDbContext _context;
         private readonly HttpClient _httpClient;
-        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/run/predict";
+
+        // ✅ Hugging Face API - NEW endpoint
+        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/api/predict/";
 
         public ChatController(AppDbContext context)
         {
@@ -22,12 +24,39 @@ namespace ChatBackend.Controllers
             _httpClient = new HttpClient();
         }
 
+        // ✅ Register user
+        [HttpPost("register")]
+        public IActionResult Register([FromBody] User user)
+        {
+            if (user == null || string.IsNullOrWhiteSpace(user.Nickname))
+                return BadRequest(new { error = "Nickname is required" });
+
+            _context.Users.Add(user);
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                success = true,
+                userId = user.Id,
+                nickname = user.Nickname
+            });
+        }
+
+        // ✅ Send Message + AI Prediction
         [HttpPost("message")]
         public async Task<IActionResult> SendMessage([FromBody] Message message)
         {
+            // ✅ Validate UserId
+            var userExists = await _context.Users.AnyAsync(x => x.Id == message.UserId);
+            if (!userExists)
+                return BadRequest(new { success = false, error = "Invalid UserId" });
+
+            message.CreatedAt = DateTime.UtcNow;
+
             try
             {
-                var payload = new { data = new[] { message.Text } };
+                // ✅ OpenAI payload format
+                var payload = new { text = message.Text };
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -36,49 +65,46 @@ namespace ChatBackend.Controllers
 
                 Console.WriteLine("🔍 AI Response: " + responseText);
 
-                using JsonDocument doc = JsonDocument.Parse(responseText);
-                var root = doc.RootElement;
-
-                string label = "Unknown";
-                float score = 0;
-
-                if (root.TryGetProperty("data", out JsonElement dataArray)
-                    && dataArray.ValueKind == JsonValueKind.Array
-                    && dataArray.GetArrayLength() > 0)
+                if (!response.IsSuccessStatusCode)
                 {
-                    var result = dataArray[0];
+                    message.Emotion = "Unknown";
+                }
+                else
+                {
+                    using var doc = JsonDocument.Parse(responseText);
+                    var root = doc.RootElement;
 
-                    if (result.TryGetProperty("label", out JsonElement labelElement))
-                        label = labelElement.GetString() ?? "Unknown";
-
-                    if (result.TryGetProperty("score", out JsonElement scoreElement))
-                        score = scoreElement.GetSingle();
+                    var label = root.GetProperty("label").GetString() ?? "NEUTRAL";
+                    message.Emotion = label;
                 }
 
-                message.Emotion = label;
-                message.CreatedAt = DateTime.UtcNow;
-
+                // ✅ Save to database
                 _context.Messages.Add(message);
                 await _context.SaveChangesAsync();
 
-                return Ok(new { success = true, message, score });
+                return Ok(new
+                {
+                    success = true,
+                    userId = message.UserId,
+                    text = message.Text,
+                    emotion = message.Emotion
+                });
             }
             catch (Exception ex)
             {
                 Console.WriteLine("❌ AI ERROR: " + ex.Message);
-                return Ok(new
-                {
-                    success = false,
-                    emotion = "Unknown",
-                    detail = ex.Message
-                });
+                return Ok(new { success = false, emotion = "Unknown", detail = ex.Message });
             }
         }
 
+        // ✅ Get messages
         [HttpGet("messages")]
         public IActionResult GetMessages()
         {
-            var messages = _context.Messages.OrderByDescending(m => m.Id).ToList();
+            var messages = _context.Messages
+                .OrderByDescending(m => m.Id)
+                .ToList();
+
             return Ok(messages);
         }
     }
