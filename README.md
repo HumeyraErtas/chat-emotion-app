@@ -83,7 +83,7 @@ Kodu kopyala
   "label": "POSITIVE",
   "score": 0.98
 }
-✅ Kurulum & Çalıştırma
+##✅ Kurulum & Çalıştırma
 🔹 Backend
 sh
 Kodu kopyala
