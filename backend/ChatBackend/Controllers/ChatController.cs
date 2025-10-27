@@ -16,7 +16,8 @@ namespace ChatBackend.Controllers
         private readonly HttpClient _httpClient;
 
         // ✅ Hugging Face API
-        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/api/predict/";
+        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/run/predict";
+
 
         public ChatController(AppDbContext context)
         {
