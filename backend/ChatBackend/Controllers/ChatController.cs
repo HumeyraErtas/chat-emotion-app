@@ -15,8 +15,8 @@ namespace ChatBackend.Controllers
         private readonly AppDbContext _context;
         private readonly HttpClient _httpClient;
 
-        // ✅ Hugging Face Sentiment Analysis API
-        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/run/predict";
+        // ✅ Hugging Face API
+        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/api/predict/";
 
         public ChatController(AppDbContext context)
         {
@@ -24,30 +24,24 @@ namespace ChatBackend.Controllers
             _httpClient = new HttpClient();
         }
 
-        // ✅ REGISTER NEW USER
+        // ✅ REGISTER USER
         [HttpPost("register")]
         public IActionResult Register([FromBody] User user)
         {
             if (user == null || string.IsNullOrWhiteSpace(user.Nickname))
-                return BadRequest(new { error = "Nickname is required" });
+                return BadRequest(new { success = false, error = "Nickname is required" });
 
             _context.Users.Add(user);
             _context.SaveChanges();
 
-            return Ok(new
-            {
-                success = true,
-                userId = user.Id,
-                nickname = user.Nickname
-            });
+            return Ok(new { success = true, userId = user.Id, nickname = user.Nickname });
         }
 
-        // ✅ SEND MESSAGE + AI EMOTION PREDICTION
+        // ✅ SEND MESSAGE & ANALYZE SENTIMENT
         [HttpPost("message")]
         public async Task<IActionResult> SendMessage([FromBody] Message message)
         {
-            var userExists = await _context.Users.AnyAsync(x => x.Id == message.UserId);
-            if (!userExists)
+            if (!await _context.Users.AnyAsync(u => u.Id == message.UserId))
                 return BadRequest(new { success = false, error = "Invalid UserId" });
 
             message.CreatedAt = DateTime.UtcNow;
@@ -64,32 +58,28 @@ namespace ChatBackend.Controllers
 
                 Console.WriteLine("🔍 AI Response: " + responseText);
 
-                if (response.IsSuccessStatusCode)
+                // ✅ HuggingFace API response must contain "label"
+                if (response.IsSuccessStatusCode && responseText.Contains("label"))
                 {
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(responseText);
-                        var root = doc.RootElement;
+                    using var doc = JsonDocument.Parse(responseText);
+                    var aiLabel = doc.RootElement.GetProperty("data")[0].GetProperty("label").GetString();
 
-                        if (root.TryGetProperty("data", out JsonElement dataArray) &&
-                            dataArray.ValueKind == JsonValueKind.Array &&
-                            dataArray.GetArrayLength() > 0)
-                        {
-                            var first = dataArray[0];
-
-                            if (first.TryGetProperty("label", out JsonElement labelElement))
-                                emotion = labelElement.GetString() ?? "Unknown";
-                        }
-                    }
-                    catch
+                    // ✅ Normalize label
+                    emotion = aiLabel?.ToUpper() switch
                     {
-                        Console.WriteLine("⚠ AI JSON Parse Error!");
-                    }
+                        "POSITIVE" => "Positive",
+                        "NEGATIVE" => "Negative",
+                        _ => "Neutral"
+                    };
+                }
+                else
+                {
+                    Console.WriteLine("⚠ AI returned invalid data!");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ AI ERROR: " + ex.Message);
+                Console.WriteLine("❌ AI Error: " + ex.Message);
             }
 
             // ✅ Save to DB
@@ -97,12 +87,12 @@ namespace ChatBackend.Controllers
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            // ✅ Response to Client
             return Ok(new
             {
                 success = true,
                 messageId = message.Id,
-                message = message.Text,
+                userId = message.UserId,
+                text = message.Text,
                 emotion = emotion
             });
         }
