@@ -15,17 +15,17 @@ namespace ChatBackend.Controllers
         private readonly AppDbContext _context;
         private readonly HttpClient _httpClient;
 
-        // ✅ Hugging Face API
-        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/run/predict";
-
+        // 🔴 BURAYI 1. ADIMDAKİ TAM URL İLE GÜNCELLE
+        // Örn: private const string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/api/predict/";
+        private const string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/api/predict";
 
         public ChatController(AppDbContext context)
         {
             _context = context;
             _httpClient = new HttpClient();
+            _httpClient.Timeout = TimeSpan.FromSeconds(25);
         }
 
-        // ✅ REGISTER USER
         [HttpPost("register")]
         public IActionResult Register([FromBody] User user)
         {
@@ -38,44 +38,57 @@ namespace ChatBackend.Controllers
             return Ok(new { success = true, userId = user.Id, nickname = user.Nickname });
         }
 
-        // ✅ SEND MESSAGE & ANALYZE SENTIMENT
         [HttpPost("message")]
         public async Task<IActionResult> SendMessage([FromBody] Message message)
         {
+            if (message == null || string.IsNullOrWhiteSpace(message.Text))
+                return BadRequest(new { success = false, error = "Text is required" });
+
             if (!await _context.Users.AnyAsync(u => u.Id == message.UserId))
                 return BadRequest(new { success = false, error = "Invalid UserId" });
 
             message.CreatedAt = DateTime.UtcNow;
+
             string emotion = "Unknown";
 
             try
             {
                 var payload = new { data = new[] { message.Text } };
                 var json = JsonSerializer.Serialize(payload);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                content.Headers.Add("Accept", "application/json");
 
                 var response = await _httpClient.PostAsync(AI_URL, content);
                 var responseText = await response.Content.ReadAsStringAsync();
 
                 Console.WriteLine("🔍 AI Response: " + responseText);
 
-                // ✅ HuggingFace API response must contain "label"
-                if (response.IsSuccessStatusCode && responseText.Contains("label"))
+                if (response.IsSuccessStatusCode)
                 {
                     using var doc = JsonDocument.Parse(responseText);
-                    var aiLabel = doc.RootElement.GetProperty("data")[0].GetProperty("label").GetString();
+                    var root = doc.RootElement;
 
-                    // ✅ Normalize label
-                    emotion = aiLabel?.ToUpper() switch
+                    if (root.TryGetProperty("data", out var dataArr) &&
+                        dataArr.ValueKind == JsonValueKind.Array &&
+                        dataArr.GetArrayLength() > 0)
                     {
-                        "POSITIVE" => "Positive",
-                        "NEGATIVE" => "Negative",
-                        _ => "Neutral"
-                    };
+                        var first = dataArr[0];
+                        if (first.TryGetProperty("label", out var labelEl))
+                        {
+                            var raw = labelEl.GetString()?.ToUpperInvariant() ?? "NEUTRAL";
+                            emotion = raw switch
+                            {
+                                "POSITIVE" => "Positive",
+                                "NEGATIVE" => "Negative",
+                                _ => "Neutral"
+                            };
+                        }
+                    }
                 }
                 else
                 {
-                    Console.WriteLine("⚠ AI returned invalid data!");
+                    // 404/502 gibi durumları logla
+                    Console.WriteLine($"⚠ AI HTTP {(int)response.StatusCode}: {response.ReasonPhrase}");
                 }
             }
             catch (Exception ex)
@@ -83,7 +96,6 @@ namespace ChatBackend.Controllers
                 Console.WriteLine("❌ AI Error: " + ex.Message);
             }
 
-            // ✅ Save to DB
             message.Emotion = emotion;
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
@@ -94,11 +106,10 @@ namespace ChatBackend.Controllers
                 messageId = message.Id,
                 userId = message.UserId,
                 text = message.Text,
-                emotion = emotion
+                emotion
             });
         }
 
-        // ✅ GET ALL MESSAGES
         [HttpGet("messages")]
         public IActionResult GetMessages()
         {
