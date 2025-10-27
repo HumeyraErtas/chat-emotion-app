@@ -38,7 +38,7 @@ namespace ChatBackend.Controllers
         [HttpPost("message")]
         public async Task<IActionResult> SendMessage([FromBody] Message message)
         {
-            if (!await _context.Users.AnyAsync(x => x.Id == message.UserId))
+            if (!await _context.Users.AnyAsync(u => u.Id == message.UserId))
                 return BadRequest(new { success = false, error = "Invalid UserId" });
 
             message.CreatedAt = DateTime.UtcNow;
@@ -46,48 +46,46 @@ namespace ChatBackend.Controllers
 
             try
             {
-                // 1️⃣ İlk istek -> event_id alıyoruz
-                var payload = new { data = new[] { message.Text } };
-                var json = JsonSerializer.Serialize(payload);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                // ✅ 1. POST → Event ID Al
+                var jsonContent = JsonSerializer.Serialize(new
+                {
+                    data = new[] { message.Text }
+                });
 
-                var eventResponse = await _httpClient.PostAsync(AI_URL, content);
-                var eventText = await eventResponse.Content.ReadAsStringAsync();
+                Console.WriteLine("✅ Request Sent To AI!");
+                var response = await _httpClient.PostAsync(AI_URL,
+                    new StringContent(jsonContent, Encoding.UTF8, "application/json"));
 
-                Console.WriteLine("📌 Event Response: " + eventText);
+                var rawEvent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("📌 EVENT RESPONSE => " + rawEvent);
 
-            using var eventDoc = JsonDocument.Parse(eventText);
-                var eventId = eventDoc.RootElement.GetProperty("event_id").GetString();
-
-                if (eventId == null)
+                var eventId = JsonDocument.Parse(rawEvent).RootElement.GetProperty("event_id").GetString();
+                if (string.IsNullOrEmpty(eventId))
                     throw new Exception("event_id alınamadı!");
 
-                // ✅ Sonuç için doğru URL
-                var resultUrl = $"https://humeyraertas-chat-sentiment-analyzer.hf.space/gradio_api/call/predict/{eventId}";
-                Console.WriteLine("🔍 AI Stream URL: " + resultUrl);
+                // ✅ 2. GET → Streaming Sonuç Oku
+                var resultUrl = $"{AI_URL}/{eventId}";
+                Console.WriteLine("🔍 STREAM => " + resultUrl);
 
                 using var stream = await _httpClient.GetStreamAsync(resultUrl);
                 using var reader = new StreamReader(stream);
 
+                DateTime timeout = DateTime.Now.AddSeconds(8);
                 string? line;
-                DateTime timeout = DateTime.Now.AddSeconds(10);
 
                 while ((line = await reader.ReadLineAsync()) != null && DateTime.Now < timeout)
                 {
-                    Console.WriteLine("📝 AI Stream Line => " + line);
-
                     if (!line.Trim().StartsWith("{")) continue;
                     if (!line.Contains("label")) continue;
 
+                    Console.WriteLine("🧠 STREAM LINE => " + line);
+
                     try
                     {
-                        using var doc = JsonDocument.Parse(line);
-                        var label = doc.RootElement
-                                    .GetProperty("data")[0]
-                                    .GetProperty("label")
-                                    .GetString();
-
-                        Console.WriteLine("✅ LABEL FOUND: " + label);
+                        var label = JsonDocument.Parse(line)
+                            .RootElement.GetProperty("data")[0]
+                            .GetProperty("label")
+                            .GetString();
 
                         emotion = label?.ToUpper() switch
                         {
@@ -95,15 +93,16 @@ namespace ChatBackend.Controllers
                             "NEGATIVE" => "Negative",
                             _ => "Neutral"
                         };
+
+                        Console.WriteLine("✅ EMOTION DETECTED => " + emotion);
                         break;
                     }
-                    catch { /* JSON olmayan satır olabilir */ }
+                    catch { }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ AI Error => " + ex.Message);
-                emotion = "Unknown";
+                Console.WriteLine("❌ AI ERROR => " + ex.Message);
             }
 
             message.Emotion = emotion;
@@ -122,7 +121,7 @@ namespace ChatBackend.Controllers
         [HttpGet("messages")]
         public IActionResult GetMessages()
         {
-            var messages = _context.Messages.OrderByDescending(x => x.Id).ToList();
+            var messages = _context.Messages.OrderByDescending(m => m.Id).ToList();
             return Ok(messages);
         }
     }
