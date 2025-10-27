@@ -110,7 +110,7 @@ Postman ile API test edildi
 
 Duygu analizi + DB kayıt işlemleri doğrulandı ✅
 
-🌍 Deployment Linkleri
+##🌍 Deployment Linkleri
 Servis	Link
 🌐 Web Uygulaması	(Vercel linki gelecektir)
 🧩 AI Servisi	https://huggingface.co/spaces/humeyraertas/chat-sentiment-analyzer
@@ -119,7 +119,7 @@ Servis	Link
 Not: HuggingFace ücretsiz olduğu için Space sleep moduna girebilir.
 İlk çağrıda açılması birkaç saniye sürebilir ⏳
 
-👩‍💻 Geliştirici
+##👩‍💻 Geliştirici
 Hümeyra Ertaş
 Manisa Celal Bayar Üniversitesi – Yazılım Mühendisliği
 📌 FullStack + AI Stajyer Projesi
