@@ -1,127 +1,165 @@
-# PROJE PLANI
-# 🎯 Chat Emotion Analyzer  
-Full-Stack + AI Chat Uygulaması
+Chat Emotion Analyzer
 
-Bu proje, kullanıcıların mesaj yazarak sohbet ettiği ve yazışmaların **AI tarafından duygu analizi yapılarak** anlık olarak görüntülendiği bir web + mobil uygulamasıdır.
+Bu proje, kullanıcıların mesajlaştığı ve mesajların yapay zekâ ile duygu analizinin (pozitif/nötr/negatif) canlı gösterildiği bir web + mobil uygulamasıdır.
 
----
+Amaç
 
-## 🧠 Proje Amaçları  
-- Full-stack yapı geliştirme (React → .NET Core → Python AI)
-- Gerçek zamanlı duygu analizi entegrasyonu
-- Ücretsiz cloud deployment süreçlerini öğrenme
-- AI modeli API tüketimi
+React → .NET Core → Python AI uçtan uca zinciri kurmak
 
----
+Hugging Face üzerinde çalışan bir duygu analizi servisini kullanmak
 
-## 🚀 Teknoloji Stack’i
-| Katman | Teknoloji | Hosting |
-|--------|----------|---------|
-| Frontend (Web) | React | Vercel |
-| Frontend (Mobil) | React Native CLI | Lokal / APK Build |
-| Backend API | .NET Core + SQLite | Render |
-| AI Service | Python + Hugging Face Transformers | HuggingFace Spaces |
+Ücretsiz platformlara dağıtım (Render, Hugging Face, Vercel)
 
----
+Teknolojiler ve Hosting
+Katman	Teknoloji	Hosting
+Frontend (Web)	React (Vite)	Vercel
+Backend API	.NET 7 + SQLite	Render
+AI Servisi	Python + Gradio + Transformers	Hugging Face Spaces
+Mobil (opsiyonel)	React Native CLI	Lokal/APK
+Mimari Akış
 
-## 📌 Mimari Akış
-Kullanıcı mesaj gönderir ➝  
-Backend API veriyi kaydeder ➝  
-AI servisine gönderir ➝  
-AI duyguyu analiz eder ➝  
-Frontend ekranda gösterir ✅
+Kullanıcı frontend’den mesaj gönderir.
 
----
+Backend mesajı veritabanına kaydeder ve AI servisine yollar.
 
-## 🗂 Proje Klasör Yapısı
+AI sonucu (label + score) backend’e döner.
 
+Backend son duyguyu frontend’e gönderir ve listede gösterilir.
+
+Proje Klasör Yapısı
 chat-emotion-app/
-│
-├── backend/ → .NET Core API + Database (Render)
-│ ├── Controllers/
-│ ├── Data/
-│ ├── Models/
-│ └── Program.cs
-│
-├── frontend/ → React Web (Vercel)
-│ ├── src/
-│ └── App.jsx
-│
-└── ai-service/ → Hugging Face Space (Gradio + Transformers)
-├── app.py
-└── requirements.txt
+├─ backend/                # .NET Core API (Render)
+│  ├─ Controllers/
+│  ├─ Data/
+│  ├─ Models/
+│  └─ Program.cs
+├─ frontend/               # React Web (Vercel)
+│  ├─ src/
+│  └─ index.html, vite.config.ts vb.
+└─ ai-service/             # Hugging Face Space
+   ├─ app.py
+   └─ requirements.txt
 
-yaml
-Kodu kopyala
+Backend API
 
----
+Temel adres (örnek):
+https://chat-emotion-app-2.onrender.com
 
-## 🔌 Backend API Endpointleri
+Endpointler
 
-| METHOD | URL | Açıklama |
-|--------|-----|----------|
-| POST | `/api/chat/register` | Kullanıcı kaydı |
-| POST | `/api/chat/message` | AI duygu analizi + mesaj kaydı |
-| GET | `/api/chat/messages` | Mesaj listesini getir |
+POST /api/chat/register
+Kullanıcı kaydı (sadece rumuz).
 
-📝 **Örnek POST Body:**
-```json
+Request
+
+{
+  "nickname": "Humeyra"
+}
+
+
+Response
+
+{
+  "success": true,
+  "userId": 1,
+  "nickname": "Humeyra"
+}
+
+
+POST /api/chat/message
+Mesajı kaydeder, AI ile duyguyu tespit eder.
+
+Request
+
 {
   "userId": 1,
-  "text": "Bugün çok mutluyum!"
+  "text": "Bugün harika hissediyorum!"
 }
-🔥 AI Servisi (HuggingFace)
+
+
+Response (örnek)
+
+{
+  "success": true,
+  "messageId": 10,
+  "userId": 1,
+  "text": "Bugün harika hissediyorum!",
+  "emotion": "Positive"
+}
+
+
+GET /api/chat/messages
+En son mesajları döner.
+
+Response (örnek)
+
+[
+  {
+    "id": 10,
+    "userId": 1,
+    "text": "Bugün harika hissediyorum!",
+    "emotion": "Positive",
+    "createdAt": "2025-10-27T10:00:00Z"
+  }
+]
+
+AI Servisi
+
+Hugging Face Space URL (örnek):
+https://huggingface.co/spaces/humeyraertas/chat-sentiment-analyzer
+
 Model: distilbert-base-uncased-finetuned-sst-2-english
 
-Endpoint: HuggingFace arayüzü üzerinden çağrılır
+Beklenen çıktı:
 
-Çıktı formatı:
-
-json
-Kodu kopyala
 {
   "label": "POSITIVE",
   "score": 0.98
 }
-##✅ Kurulum & Çalıştırma
-🔹 Backend
-sh
-Kodu kopyala
+
+
+Not: Hugging Face ücretsiz planda ilk istekler “uyandırma” nedeniyle gecikebilir.
+
+Kurulum
+Backend (lokal)
 cd backend
 dotnet restore
 dotnet run
-➡ API: http://localhost:5000
 
-🔹 Frontend
-sh
-Kodu kopyala
+
+Varsayılan: http://localhost:5000
+
+Frontend (lokal)
 cd frontend
 npm install
 npm run dev
-➡ Web UI: http://localhost:5173
 
-🔹 Mobil (Opsiyonel)
-sh
-Kodu kopyala
+
+Varsayılan: http://localhost:5173
+
+Mobil (opsiyonel)
 cd mobile
 npx react-native run-android
-🧪 Testler
-Postman ile API test edildi
 
-Duygu analizi + DB kayıt işlemleri doğrulandı ✅
+Deployment Linkleri
+Servis	URL
+Web (Vercel)	(buraya ekleyin)
+Backend API (Render)	https://chat-emotion-app-2.onrender.com
 
-##🌍 Deployment Linkleri
-Servis	Link
-🌐 Web Uygulaması	(Vercel linki gelecektir)
-🧩 AI Servisi	https://huggingface.co/spaces/humeyraertas/chat-sentiment-analyzer
-🛠 Backend API	https://chat-emotion-app-2.onrender.com
+AI Servisi (Hugging Face)	https://huggingface.co/spaces/humeyraertas/chat-sentiment-analyzer
+Test Durumu
+Test	Sonuç
+Kullanıcı Kaydı	Başarılı
+Mesaj Gönderimi	Başarılı
+AI Duygu Analizi	Başarılı (uyandırma sonrası)
+Veritabanı Kaydı	Başarılı
+Web Arayüzü	Başarılı
+Geliştirici
 
-Not: HuggingFace ücretsiz olduğu için Space sleep moduna girebilir.
-İlk çağrıda açılması birkaç saniye sürebilir ⏳
+İsim: Hümeyra Ertaş
 
-##👩‍💻 Geliştirici
-Hümeyra Ertaş
-Manisa Celal Bayar Üniversitesi – Yazılım Mühendisliği
-📌 FullStack + AI Stajyer Projesi
+Üniversite: Manisa Celal Bayar Üniversitesi
 
+Bölüm: Yazılım Mühendisliği
 
+Proje: FullStack + AI Stajyer Projesi
