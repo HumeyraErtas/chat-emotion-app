@@ -15,9 +15,7 @@ namespace ChatBackend.Controllers
         private readonly AppDbContext _context;
         private readonly HttpClient _httpClient;
 
-        // ✅ Correct Hugging Face URL
-        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/predict";
-
+        private readonly string AI_URL = "https://humeyraertas-chat-sentiment-analyzer.hf.space/gradio_api/call/predict";
 
         public ChatController(AppDbContext context)
         {
@@ -28,8 +26,8 @@ namespace ChatBackend.Controllers
         [HttpPost("register")]
         public IActionResult Register([FromBody] User user)
         {
-            if (user == null || string.IsNullOrWhiteSpace(user.Nickname))
-                return BadRequest(new { error = "Nickname is required" });
+            if (string.IsNullOrWhiteSpace(user.Nickname))
+                return BadRequest(new { success = false, error = "Nickname required" });
 
             _context.Users.Add(user);
             _context.SaveChanges();
@@ -40,7 +38,7 @@ namespace ChatBackend.Controllers
         [HttpPost("message")]
         public async Task<IActionResult> SendMessage([FromBody] Message message)
         {
-            if (!await _context.Users.AnyAsync(u => u.Id == message.UserId))
+            if (!await _context.Users.AnyAsync(x => x.Id == message.UserId))
                 return BadRequest(new { success = false, error = "Invalid UserId" });
 
             message.CreatedAt = DateTime.UtcNow;
@@ -48,26 +46,36 @@ namespace ChatBackend.Controllers
 
             try
             {
+                // Send request to HuggingFace
                 var payload = new { data = new[] { message.Text } };
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-
                 var response = await _httpClient.PostAsync(AI_URL, content);
-                var responseText = await response.Content.ReadAsStringAsync();
 
-                Console.WriteLine("🔍 AI Response: " + responseText);
+                var jsonResp = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("🔍 Step1 Response: " + jsonResp);
 
-                using var doc = JsonDocument.Parse(responseText);
-                var root = doc.RootElement;
+                using var step1Doc = JsonDocument.Parse(jsonResp);
 
-                if (root.TryGetProperty("data", out JsonElement dataArray))
+                if (!step1Doc.RootElement.TryGetProperty("event_id", out JsonElement eventIdElement))
                 {
-                    var first = dataArray[0];
-
-                    if (first.TryGetProperty("label", out JsonElement labelElement))
+                    Console.WriteLine("⚠ No event_id received.");
+                }
+                else
+                {
+                    string? eventId = eventIdElement.GetString();
+                    if (!string.IsNullOrEmpty(eventId))
                     {
-                        var label = labelElement.GetString();
-                        emotion = label switch
+                        await Task.Delay(1200); // wait for async HF space processing
+
+                        var resultResp = await _httpClient.GetAsync($"{AI_URL}/{eventId}");
+                        var resultJson = await resultResp.Content.ReadAsStringAsync();
+                        Console.WriteLine("✅ Step2 Response: " + resultJson);
+
+                        using var docResult = JsonDocument.Parse(resultJson);
+                        var label = docResult.RootElement.GetProperty("data")[0].GetProperty("label").GetString();
+
+                        emotion = label?.ToUpper() switch
                         {
                             "POSITIVE" => "Positive",
                             "NEGATIVE" => "Negative",
@@ -78,7 +86,7 @@ namespace ChatBackend.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ AI ERROR: " + ex.Message);
+                Console.WriteLine("❌ AI Error: " + ex.Message);
             }
 
             message.Emotion = emotion;
@@ -97,10 +105,7 @@ namespace ChatBackend.Controllers
         [HttpGet("messages")]
         public IActionResult GetMessages()
         {
-            var messages = _context.Messages
-                .OrderByDescending(m => m.Id)
-                .ToList();
-
+            var messages = _context.Messages.OrderByDescending(x => x.Id).ToList();
             return Ok(messages);
         }
     }
