@@ -1,28 +1,30 @@
 import gradio as gr
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+from transformers import pipeline
 
-model_name = "savasy/bert-base-turkish-sentiment-cased"
+# Model yükle
+analyzer = pipeline("sentiment-analysis")
 
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name)
+# Ana API fonksiyonu
+def analyze(message):
+    result = analyzer(message)[0]
+    label = result["label"]
 
-analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
-
-def analyze_text(text):
-    result = analyzer(text)[0]
-    label = result["label"].upper()
+    if label == "POSITIVE":
+        label = "Positive"
+    elif label == "NEGATIVE":
+        label = "Negative"
+    else:
+        label = "Neutral"
     
-    # HF sonucu "positive" / "negative" / "neutral" şeklinde
-    return {
-        "label": label,
-        "score": round(result["score"], 3)
-    }
+    return {"label": label, "score": float(result["score"])}
 
-iface = gr.Interface(
-    fn=analyze_text,
-    inputs="text",
-    outputs="json"
-)
+# ✅ API modunda çalıştır
+demo = gr.Interface(
+    fn=analyze,
+    inputs=gr.Text(),
+    outputs=gr.JSON(),
+    allow_flagging="never"
+).queue()
 
 if __name__ == "__main__":
-    iface.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860)
