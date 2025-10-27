@@ -1,30 +1,40 @@
 import gradio as gr
 from transformers import pipeline
 
-# Model yükle
-analyzer = pipeline("sentiment-analysis")
+# ✅ Turkish sentiment analysis model
+analyzer = pipeline("sentiment-analysis", model="savasy/bert-base-turkish-sentiment-cased")
 
-# Ana API fonksiyonu
-def analyze(message):
-    result = analyzer(message)[0]
-    label = result["label"]
+def analyze_text(text):
+    result = analyzer(text)[0]
+    label = result["label"].upper()
 
-    if label == "POSITIVE":
-        label = "Positive"
-    elif label == "NEGATIVE":
-        label = "Negative"
+    if "POS" in label:
+        emotion = "Positive"
+    elif "NEG" in label:
+        emotion = "Negative"
     else:
-        label = "Neutral"
-    
-    return {"label": label, "score": float(result["score"])}
+        emotion = "Neutral"
 
-# ✅ API modunda çalıştır
-demo = gr.Interface(
-    fn=analyze,
-    inputs=gr.Text(),
-    outputs=gr.JSON(),
+    return {"label": emotion, "score": float(result["score"])}
+
+# ✅ API Endpoint
+def api_predict(request):
+    text = request["data"][0]
+    return analyze_text(text)
+
+gr.Interface(
+    fn=analyze_text,
+    inputs="text",
+    outputs="json",
     allow_flagging="never"
-).queue()
+).launch()
 
-if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+import gradio as gr
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+@app.post("/predict")
+async def predict(req: Request):
+    data = await req.json()
+    return analyze_text(data["data"][0])
