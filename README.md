@@ -1,165 +1,94 @@
-Chat Emotion Analyzer
+Chat Emotion Analyzer – Full Stack AI Chat Uygulaması
+👤 Geliştirici
 
-Bu proje, kullanıcıların mesajlaştığı ve mesajların yapay zekâ ile duygu analizinin (pozitif/nötr/negatif) canlı gösterildiği bir web + mobil uygulamasıdır.
+Hümeyra Ertaş
+Manisa Celal Bayar Üniversitesi – Yazılım Mühendisliği
+FullStack + AI Stajyer Projesi
 
-Amaç
+📌 Proje Özeti
 
-React → .NET Core → Python AI uçtan uca zinciri kurmak
+Bu proje, kullanıcıların yazılı sohbet edebildiği ve mesajların AI tarafından anlık duygu analizinin gerçekleştirildiği tam uçtan uca bir FullStack uygulamasıdır.
 
-Hugging Face üzerinde çalışan bir duygu analizi servisini kullanmak
+✅ Web – React
+✅ Backend – .NET Core + SQLite
+✅ AI – Python Sentiment Analysis (HuggingFace Spaces)
+✅ Deploy – Render + HuggingFace Spaces
 
-Ücretsiz platformlara dağıtım (Render, Hugging Face, Vercel)
+✅ Kullanılan Teknolojiler
+Katman	Teknoloji
+Frontend (Web)	React + Fetch API
+Backend	.NET Core Web API, Entity Framework Core, SQLite
+AI Servisi	Python, Transformers, Gradio API
+Hosting	Render (.NET API), HuggingFace (AI Model)
+Geliştirme	Visual Studio Code, Postman
+🚀 Sistem Mimarisi
+React Web Chat  →  .NET Core API  →  Hugging Face AI Model
+                      ↓
+                   SQLite DB
 
-Teknolojiler ve Hosting
-Katman	Teknoloji	Hosting
-Frontend (Web)	React (Vite)	Vercel
-Backend API	.NET 7 + SQLite	Render
-AI Servisi	Python + Gradio + Transformers	Hugging Face Spaces
-Mobil (opsiyonel)	React Native CLI	Lokal/APK
-Mimari Akış
+🌍 Canlı Demo Linkleri
+Bileşen	URL
+Web Chat App (React)	(Eklenebilir - Vercel Deploy opsiyonel)
+Backend API (Render)	https://chat-emotion-app-2.onrender.com
 
-Kullanıcı frontend’den mesaj gönderir.
-
-Backend mesajı veritabanına kaydeder ve AI servisine yollar.
-
-AI sonucu (label + score) backend’e döner.
-
-Backend son duyguyu frontend’e gönderir ve listede gösterilir.
-
-Proje Klasör Yapısı
-chat-emotion-app/
-├─ backend/                # .NET Core API (Render)
-│  ├─ Controllers/
-│  ├─ Data/
-│  ├─ Models/
-│  └─ Program.cs
-├─ frontend/               # React Web (Vercel)
-│  ├─ src/
-│  └─ index.html, vite.config.ts vb.
-└─ ai-service/             # Hugging Face Space
-   ├─ app.py
-   └─ requirements.txt
-
-Backend API
-
-Temel adres (örnek):
-https://chat-emotion-app-2.onrender.com
-
-Endpointler
-
+AI Model HuggingFace	https://huggingface.co/spaces/humeyraertas/chat-sentiment-analyzer
+🧪 Test Endpoints (Postman İçin)
+✅ Kullanıcı Kaydı
 POST /api/chat/register
-Kullanıcı kaydı (sadece rumuz).
-
-Request
-
+Content-Type: application/json
 {
-  "nickname": "Humeyra"
+  "nickname": "Hume"
 }
 
-
-Response
-
-{
-  "success": true,
-  "userId": 1,
-  "nickname": "Humeyra"
-}
-
-
+✅ Mesaj Gönder + Duygu Analizi
 POST /api/chat/message
-Mesajı kaydeder, AI ile duyguyu tespit eder.
-
-Request
-
+Content-Type: application/json
 {
   "userId": 1,
   "text": "Bugün harika hissediyorum!"
 }
 
-
-Response (örnek)
-
-{
-  "success": true,
-  "messageId": 10,
-  "userId": 1,
-  "text": "Bugün harika hissediyorum!",
-  "emotion": "Positive"
-}
-
-
+✅ Mesajları Listele
 GET /api/chat/messages
-En son mesajları döner.
 
-Response (örnek)
+📁 Proje Klasör Yapısı
+📦 chat-emotion-app
+ ┣ 📂 backend (.NET Core API)
+ ┣ 📂 ai-service (Hugging Face)
+ ┗ 📂 frontend (React Web)
 
-[
-  {
-    "id": 10,
-    "userId": 1,
-    "text": "Bugün harika hissediyorum!",
-    "emotion": "Positive",
-    "createdAt": "2025-10-27T10:00:00Z"
-  }
-]
+✨ Öğrenim Kazanımları
 
-AI Servisi
+✔ FullStack yazılım geliştirme zincirini anlama
+✔ AI API entegrasyonu
+✔ Ücretsiz platformlarda deployment
+✔ Debugging, API test ve hata yönetimi
 
-Hugging Face Space URL (örnek):
-https://huggingface.co/spaces/humeyraertas/chat-sentiment-analyzer
+📌 Kod Hakkım Beyanı
 
-Model: distilbert-base-uncased-finetuned-sst-2-english
+Bu projede kullanım amaçlı bazı kod parçaları yapay zeka yardımıyla üretilmiş olsa da:
 
-Beklenen çıktı:
+✅ Backend API
+✅ Frontend HTTP entegrasyonu
+✅ DB işlemleri
 
-{
-  "label": "POSITIVE",
-  "score": 0.98
-}
+tamamen tarafımdan geliştirilmiştir ve çalışma mantığını açıklayabilmekteyim.
 
+📎 Ekler
 
-Not: Hugging Face ücretsiz planda ilk istekler “uyandırma” nedeniyle gecikebilir.
+📄 Staj Case Raporu — Word Dokümanı ✅
+(İndirilebilir format olarak teslim edildi)
 
-Kurulum
-Backend (lokal)
-cd backend
-dotnet restore
-dotnet run
+✅ Durum
 
+📌 Proje başarıyla tamamlandı ✅
+📌 Tüm servisler entegre edildi ✅
 
-Varsayılan: http://localhost:5000
+✉ İletişim
 
-Frontend (lokal)
-cd frontend
-npm install
-npm run dev
+📧 humeyraertas@example.com
 
-
-Varsayılan: http://localhost:5173
-
-Mobil (opsiyonel)
-cd mobile
-npx react-native run-android
-
-Deployment Linkleri
-Servis	URL
-Web (Vercel)	(buraya ekleyin)
-Backend API (Render)	https://chat-emotion-app-2.onrender.com
-
-AI Servisi (Hugging Face)	https://huggingface.co/spaces/humeyraertas/chat-sentiment-analyzer
-Test Durumu
-Test	Sonuç
-Kullanıcı Kaydı	Başarılı
-Mesaj Gönderimi	Başarılı
-AI Duygu Analizi	Başarılı (uyandırma sonrası)
-Veritabanı Kaydı	Başarılı
-Web Arayüzü	Başarılı
-Geliştirici
-
-İsim: Hümeyra Ertaş
-
-Üniversite: Manisa Celal Bayar Üniversitesi
-
+🔗 GitHub: https://github.com/HumeyraErtas
 Bölüm: Yazılım Mühendisliği
 
 Proje: FullStack + AI Stajyer Projesi
