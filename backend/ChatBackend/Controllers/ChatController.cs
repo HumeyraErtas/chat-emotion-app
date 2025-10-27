@@ -54,16 +54,17 @@ namespace ChatBackend.Controllers
                 var eventResponse = await _httpClient.PostAsync(AI_URL, content);
                 var eventText = await eventResponse.Content.ReadAsStringAsync();
 
-                using var eventDoc = JsonDocument.Parse(eventText);
+                Console.WriteLine("📌 Event Response: " + eventText);
+
+            using var eventDoc = JsonDocument.Parse(eventText);
                 var eventId = eventDoc.RootElement.GetProperty("event_id").GetString();
 
                 if (eventId == null)
                     throw new Exception("event_id alınamadı!");
 
-                // 2️⃣ İkinci istek -> event sonucunu stream olarak çekiyoruz
+                // ✅ Sonuç için doğru URL
                 var resultUrl = $"https://humeyraertas-chat-sentiment-analyzer.hf.space/gradio_api/call/predict/{eventId}";
-
-                Console.WriteLine("🔍 AI Stream URL => " + resultUrl);
+                Console.WriteLine("🔍 AI Stream URL: " + resultUrl);
 
                 using var stream = await _httpClient.GetStreamAsync(resultUrl);
                 using var reader = new StreamReader(stream);
@@ -71,18 +72,22 @@ namespace ChatBackend.Controllers
                 string? line;
                 DateTime timeout = DateTime.Now.AddSeconds(10);
 
-                while ((line = await reader.ReadLineAsync()) != null &&
-                    DateTime.Now < timeout)
+                while ((line = await reader.ReadLineAsync()) != null && DateTime.Now < timeout)
                 {
-                    if (line.Contains("\"label\""))
-                    {
-                        Console.WriteLine("✅ RAW EMOTION LINE: " + line);
+                    Console.WriteLine("📝 AI Stream Line => " + line);
 
+                    if (!line.Trim().StartsWith("{")) continue;
+                    if (!line.Contains("label")) continue;
+
+                    try
+                    {
                         using var doc = JsonDocument.Parse(line);
                         var label = doc.RootElement
                                     .GetProperty("data")[0]
                                     .GetProperty("label")
                                     .GetString();
+
+                        Console.WriteLine("✅ LABEL FOUND: " + label);
 
                         emotion = label?.ToUpper() switch
                         {
@@ -90,15 +95,15 @@ namespace ChatBackend.Controllers
                             "NEGATIVE" => "Negative",
                             _ => "Neutral"
                         };
-
                         break;
                     }
+                    catch { /* JSON olmayan satır olabilir */ }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ AI Error => " + ex);
-                emotion = "Unknown"; 
+                Console.WriteLine("❌ AI Error => " + ex.Message);
+                emotion = "Unknown";
             }
 
             message.Emotion = emotion;
